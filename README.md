@@ -1,4 +1,6 @@
-# Double Tick Pebble Watchface
+# Doug Fir Pebble Watchface
+
+https://apps.rebble.io/en_US/application/69a3e2aa7998990009c8fa2a
 
 ## Screenshots
 
