@@ -161,7 +161,8 @@ static void update_layer(Layer* layer, GContext* ctx) {
   int dial_radius = vcr - text_size;
   int tick_length = big_screen ? 12 : 10;
   int minute_tip = dial_radius - tick_length / 2;
-  GPoint center = GPoint(vcr + 1, vcr + 1); // bias towards top of displays that are taller than wide
+  // bias towards top of (rectangular) displays that are taller than wide
+  GPoint center = PBL_IF_ROUND_ELSE(grect_center_point(&bounds), GPoint(vcr, vcr));
   draw_ticks(ctx, center, dial_radius, tick_length);
   draw_numbers(ctx, center, vcr, text_size, now);
   draw_minute_hand(ctx, center, minute_tip, now);
