@@ -1,24 +1,21 @@
 {
-  "name": "double_ticks",
+  "name": "doug_fir",
   "author": "justinjhendrick",
-  "version": "1.2.0",
+  "version": "1.0.0",
   "keywords": [
-    "pebble-app"
+    "pebble-watchface",
+    "analog"
   ],
-  "private": true,
+  "private": false,
   "dependencies": {
     "pebble-clay": "^1.0.4"
   },
   "pebble": {
-    "displayName": "Double Dial",
-    "uuid": "10dc25d7-7512-4f40-995d-bcd7eceba568",
+    "displayName": "Doug Fir",
+    "uuid": "4e8dd180-7666-421e-8e5e-9dadbcc1feff",
     "sdkVersion": "3",
     "enableMultiJS": true,
     "targetPlatforms": [
-      "aplite",
-      "basalt",
-      "chalk",
-      "diorite",
       "emery"
     ],
     "watchapp": {
