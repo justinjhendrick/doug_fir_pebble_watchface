@@ -5,9 +5,8 @@
     "items": [
       { "type": "heading", "defaultValue": "Colors" },
       { "type": "color",  "messageKey": "color_background",         "defaultValue": "0x000055", "label": "color_background" },
-      { "type": "color",  "messageKey": "color_major_tick",         "defaultValue": "0x5555AA", "label": "color_major_tick" },
-      { "type": "color",  "messageKey": "color_minor_minute_tick",  "defaultValue": "0x5555AA", "label": "color_minor_minute_tick" },
-      { "type": "color",  "messageKey": "color_minor_hour_tick",    "defaultValue": "0x5555AA", "label": "color_minor_hour_tick" },
+      { "type": "color",  "messageKey": "color_major_tick",         "defaultValue": "0xFFFFFF", "label": "color_major_tick" },
+      { "type": "color",  "messageKey": "color_minor_tick",         "defaultValue": "0xFFFFFF", "label": "color_minor_tick" },
       { "type": "color",  "messageKey": "color_hour",               "defaultValue": "0xAAFFFF", "label": "color_hour" },
       { "type": "color",  "messageKey": "color_minute",             "defaultValue": "0xFFAA55", "label": "color_minute" }
     ],
@@ -19,20 +18,11 @@
       { "type": "heading", "defaultValue": "Colors" },
       { "type": "color",  "messageKey": "color_background",         "defaultValue": "0x000000", "label": "color_background" },
       { "type": "color",  "messageKey": "color_major_tick",         "defaultValue": "0xFFFFFF", "label": "color_major_tick" },
-      { "type": "color",  "messageKey": "color_minor_minute_tick",  "defaultValue": "0xFFFFFF", "label": "color_minor_minute_tick" },
-      { "type": "color",  "messageKey": "color_minor_hour_tick",    "defaultValue": "0xFFFFFF", "label": "color_minor_hour_tick" },
+      { "type": "color",  "messageKey": "color_minor_tick",         "defaultValue": "0xFFFFFF", "label": "color_minor_tick" },
       { "type": "color",  "messageKey": "color_hour",               "defaultValue": "0xFFFFFF", "label": "color_hour" },
       { "type": "color",  "messageKey": "color_minute",             "defaultValue": "0xFFFFFF", "label": "color_minute" }
     ],
     "capabilities": ["BW"]
-  },
-  {
-    "type": "section",
-    "items": [
-      { "type": "heading", "defaultValue": "Sizes" },
-      { "type": "slider", "messageKey": "width_major_tick", "label": "width_major_tick", "defaultValue": 3, "min": 0, "max": 7 },
-      { "type": "slider", "messageKey": "width_minor_tick", "label": "width_minor_tick", "defaultValue": 1, "min": 0, "max": 7 }
-    ]
   },
   {
     "type": "submit",

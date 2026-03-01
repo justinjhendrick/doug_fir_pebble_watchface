@@ -16,6 +16,10 @@
     "sdkVersion": "3",
     "enableMultiJS": true,
     "targetPlatforms": [
+      "aplite",
+      "basalt",
+      "chalk",
+      "diorite",
       "emery"
     ],
     "watchapp": {
@@ -27,12 +31,9 @@
     "messageKeys": [
       "color_background",
       "color_major_tick",
-      "color_minor_minute_tick",
-      "color_minor_hour_tick",
+      "color_minor_tick",
       "color_hour",
-      "color_minute",
-      "width_major_tick",
-      "width_minor_tick"
+      "color_minute"
     ],
     "resources": {
       "media": []

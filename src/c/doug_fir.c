@@ -2,39 +2,26 @@
 #include "utils.h"
 
 #define DEBUG_TIME (false)
-#define BUFFER_LEN (10)
-#define BW (PBL_IF_COLOR_ELSE(false, true))
-
-// TODO: define another key for settings version
-// so we can cleanly handle version upgrades
-// because the persistent storage is kept across upgrade.
+#define BUFFER_LEN (20)
 #define SETTINGS_KEY 1
 
 typedef struct ClaySettings {
   GColor color_background;
   GColor color_major_tick;
-  GColor color_minor_minute_tick;
-  GColor color_minor_hour_tick;
+  GColor color_minor_tick;
   GColor color_hour;
   GColor color_minute;
-  // TODO? separate out hour number color from hand color
-  int width_major_tick;
-  int width_minor_tick;
-  // TODO? hand width
-  // TODO? hand length multiplier for vcr
+  uint8_t buffer[40];  // save 40 bytes for later expansion
 } __attribute__((__packed__)) ClaySettings;
 
 ClaySettings settings;
 
 static void default_settings() {
-  settings.color_background = COLOR_FALLBACK(GColorOxfordBlue, GColorBlack);
-  settings.color_major_tick = COLOR_FALLBACK(GColorLiberty, GColorWhite);
-  settings.color_minor_minute_tick = COLOR_FALLBACK(GColorLiberty, GColorWhite);
-  settings.color_minor_hour_tick = COLOR_FALLBACK(GColorLiberty, GColorWhite);
-  settings.color_hour = COLOR_FALLBACK(GColorCeleste, GColorWhite);
-  settings.color_minute = COLOR_FALLBACK(GColorRajah, GColorWhite);
-  settings.width_major_tick = 3;
-  settings.width_minor_tick = 1;
+  settings.color_background        = COLOR_FALLBACK(GColorOxfordBlue, GColorBlack);
+  settings.color_major_tick        = COLOR_FALLBACK(GColorWhite, GColorWhite);
+  settings.color_minor_tick        = COLOR_FALLBACK(GColorWhite, GColorWhite);
+  settings.color_hour              = COLOR_FALLBACK(GColorCeleste, GColorWhite);
+  settings.color_minute            = COLOR_FALLBACK(GColorRajah, GColorWhite);
 }
 
 static Window* s_window;
@@ -69,73 +56,68 @@ static void draw_diamond_hand(GContext* ctx, GPoint center, int angle, int hand_
   graphics_fill_circle(ctx, center, 5);
 }
 
-static void draw_ticks(GContext* ctx, GPoint center, int vcr, int minute_tip, int hour_tip, int text_size) {
-  int hour_mid_radius = (hour_tip + minute_tip) / 2;
-  int minute_mid_radius = (minute_tip + vcr) / 2 + 1;
-  int inf_radius = vcr * 2;
-  int MAX = 12 * 60;
+static void draw_ticks(GContext* ctx, GPoint center, int radius, int length) {
+  int MAX = 60;
   for (int m = 0; m < MAX; m++) {
     int angle = m * TRIG_MAX_RATIO / MAX;
-    if (m % 60 == 0) {
-      // Hour lines
-      graphics_context_set_stroke_width(ctx, settings.width_major_tick);
+    if (m % 15 == 0) {
+      graphics_context_set_stroke_width(ctx, 3);
       graphics_context_set_stroke_color(ctx, settings.color_major_tick);
       graphics_draw_line(
         ctx,
-        PBL_IF_COLOR_ELSE(center, cartesian_from_polar(center, minute_tip, angle)),
-        cartesian_from_polar(center, inf_radius, angle)
+        cartesian_from_polar(center, radius - length, angle),
+        cartesian_from_polar(center, radius, angle)
       );
-    } else if (m % 30 == 0) {
-      // Half hour dots
-      graphics_context_set_fill_color(ctx, settings.color_minor_hour_tick);
-      graphics_fill_circle(ctx, cartesian_from_polar(center, minute_tip - 6, angle), 1);
-    } else if (m % 12 == 0) {
-      // Minute ticks
-      graphics_context_set_stroke_width(ctx, settings.width_minor_tick);
-      graphics_context_set_stroke_color(ctx, settings.color_minor_minute_tick);
-      graphics_draw_line(ctx, cartesian_from_polar(center, minute_tip, angle), cartesian_from_polar(center, inf_radius, angle));
+    } else if (m % 5 == 0) {
+      graphics_context_set_stroke_width(ctx, 1);
+      graphics_context_set_stroke_color(ctx, settings.color_major_tick);
+      graphics_draw_line(
+        ctx,
+        cartesian_from_polar(center, radius - length / 2, angle),
+        cartesian_from_polar(center, radius, angle)
+      );
+    } else {
+      graphics_context_set_stroke_color(ctx, settings.color_minor_tick);
+      graphics_draw_pixel(
+        ctx,
+        cartesian_from_polar(center, radius, angle)
+      );
     }
   }
+}
 
-  // Hour numbers
+static void draw_numbers(GContext* ctx, GPoint center, int vcr, int text_size, struct tm* now) {
+  int text_center_radius = vcr - text_size / 2;
+  // Hour
   graphics_context_set_text_color(ctx, settings.color_hour);
-  MAX = 12;
-  for (int h = 2; h <= MAX; h += 2) {
-    int angle = h * TRIG_MAX_RATIO / MAX;
-    snprintf(s_buffer, BUFFER_LEN, "%d", h);
-    GPoint text_center = cartesian_from_polar(center, hour_mid_radius, angle);
-    // GTextCenterAlignment is a liar
-    text_center.x++;
-    GRect bbox = rect_from_midpoint(text_center, GSize(text_size, text_size));
-    if (BW) {
-       graphics_context_set_fill_color(ctx, settings.color_background);
-       graphics_fill_circle(ctx, text_center, text_size / 2);
-    }
-    draw_text_midalign(ctx, s_buffer, bbox, GTextAlignmentCenter, true);
-  }
+  const int HOUR_MAX = 12;
+  int hour = get_hour(now, true);
+  int hour_angle = now->tm_hour * TRIG_MAX_RATIO / HOUR_MAX;
+  format_hour(s_buffer, BUFFER_LEN, now, true);
+  GPoint hour_text_center = cartesian_from_polar(center, text_center_radius, hour_angle);
+  GRect hour_bbox = rect_from_midpoint(hour_text_center, GSize(text_size, text_size));
+  draw_text_midalign(ctx, s_buffer, hour_bbox, GTextAlignmentCenter, false);
 
-  // minute numbers
+  // Minutes rounded down to nearest available major tick
   graphics_context_set_text_color(ctx, settings.color_minute);
-  MAX = 60;
-  for (int m = 5; m < MAX; m += 10) {
-    int angle = m * TRIG_MAX_RATIO / MAX;
-    snprintf(s_buffer, BUFFER_LEN, "%d", m);
-    GPoint text_center = cartesian_from_polar(center, minute_mid_radius, angle);
-    GRect bbox = rect_from_midpoint(text_center, GSize(text_size, text_size));
-    if (BW) {
-       graphics_context_set_fill_color(ctx, settings.color_background);
-       graphics_fill_circle(ctx, text_center, text_size / 2);
-    }
-    draw_text_midalign(ctx, s_buffer, bbox, GTextAlignmentCenter, true);
+  const int MIN_MAX = 60;
+  int min = now->tm_min / 5 * 5; // round down to nearest 5 mins
+  if ((hour % 12) * 5 == min) {
+    min -= 5; // avoid overlap
   }
+  int angle = min * TRIG_MAX_RATIO / MIN_MAX;
+  snprintf(s_buffer, BUFFER_LEN, "%d", min);
+  GPoint min_text_center = cartesian_from_polar(center, text_center_radius, angle);
+  GRect min_bbox = rect_from_midpoint(min_text_center, GSize(text_size, text_size));
+  draw_text_midalign(ctx, s_buffer, min_bbox, GTextAlignmentCenter, false);
 }
 
 static void draw_minute_hand(GContext* ctx, GPoint center, int radius, struct tm* now) {
   int total_mins = 60;
   int current_mins = now->tm_min;
   int angle = current_mins * TRIG_MAX_ANGLE / total_mins;
-  GPoint counter_balance = cartesian_from_polar(center, -9, angle);
-  GPoint tip = cartesian_from_polar(center, radius - 4, angle);
+  GPoint counter_balance = cartesian_from_polar(center, -8, angle);
+  GPoint tip = cartesian_from_polar(center, radius, angle);
   graphics_context_set_stroke_width(ctx, 5);
   graphics_context_set_stroke_color(ctx, settings.color_minute);
   graphics_draw_line(ctx, counter_balance, tip);
@@ -148,8 +130,20 @@ static void draw_hour_hand(GContext* ctx, GPoint center, int radius, struct tm* 
   graphics_context_set_stroke_width(ctx, 3);
   graphics_context_set_stroke_color(ctx, settings.color_hour);
   graphics_context_set_fill_color(ctx, settings.color_hour);
-  draw_diamond_hand(ctx, center, angle, radius * 4 / 20 + 1, radius - 4);
+  draw_diamond_hand(ctx, center, angle, radius * 4 / 20 + 1, radius);
 }
+
+static void draw_date(GContext* ctx, GRect bounds, int height, struct tm* now) {
+  GRect date_bbox;
+  date_bbox.origin = GPoint(2, bounds.size.h - height);
+  date_bbox.size = GSize(bounds.size.w - 4, height);
+  format_day_of_week(s_buffer, BUFFER_LEN, now);
+  graphics_context_set_text_color(ctx, gcolor_legible_over(settings.color_background));
+  draw_text_midalign(ctx, s_buffer, date_bbox, GTextAlignmentLeft, false);
+  format_day_and_month(s_buffer, BUFFER_LEN, now);
+  draw_text_midalign(ctx, s_buffer, date_bbox, GTextAlignmentRight, false);
+}
+
 
 static void update_layer(Layer* layer, GContext* ctx) {
   time_t temp = time(NULL);
@@ -161,14 +155,20 @@ static void update_layer(Layer* layer, GContext* ctx) {
   GRect bounds = layer_get_bounds(layer);
   graphics_context_set_fill_color(ctx, settings.color_background);
   graphics_fill_rect(ctx, bounds, 0, GCornerNone);
-  int vcr = min(bounds.size.h, bounds.size.w) / 2 - PBL_IF_ROUND_ELSE(4, 2);
-  int text_size = vcr * 7 / 20;
-  int minute_tip = vcr - text_size * 2 / 3; 
-  int hour_tip = minute_tip * 4 / 10;
-  GPoint center = grect_center_point(&bounds);
-  draw_ticks(ctx, center, vcr, minute_tip, hour_tip, text_size);
-  draw_minute_hand(ctx, center, vcr + 2, now);
-  draw_hour_hand(ctx, center, minute_tip - 6, now);
+  int vcr = min(bounds.size.h, bounds.size.w) / 2 - PBL_IF_ROUND_ELSE(4, 0);
+  bool big_screen = (bounds.size.w > 150);
+  int text_size = big_screen ? 24 : 20;
+  int dial_radius = vcr - text_size;
+  int tick_length = big_screen ? 12 : 10;
+  int minute_tip = dial_radius - tick_length / 2;
+  GPoint center = GPoint(vcr + 1, vcr + 1); // bias towards top of displays that are taller than wide
+  draw_ticks(ctx, center, dial_radius, tick_length);
+  draw_numbers(ctx, center, vcr, text_size, now);
+  draw_minute_hand(ctx, center, minute_tip, now);
+  draw_hour_hand(ctx, center, minute_tip * 5 / 6, now);
+  if (PBL_IF_RECT_ELSE(true, false)) {
+    draw_date(ctx, bounds, big_screen ? 28 : 24, now);
+  }
 }
 
 static void window_load(Window* window) {
@@ -181,7 +181,7 @@ static void window_load(Window* window) {
 }
 
 static void window_unload(Window* window) {
-  layer_destroy(s_layer);
+  if (s_layer) layer_destroy(s_layer);
 }
 
 static void tick_handler(struct tm* now, TimeUnits units_changed) {
@@ -201,12 +201,9 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   Tuple *t;
   if ((t = dict_find(iter, MESSAGE_KEY_color_background       ))) { settings.color_background         = GColorFromHEX(t->value->int32); }
   if ((t = dict_find(iter, MESSAGE_KEY_color_major_tick       ))) { settings.color_major_tick         = GColorFromHEX(t->value->int32); }
-  if ((t = dict_find(iter, MESSAGE_KEY_color_minor_minute_tick))) { settings.color_minor_minute_tick  = GColorFromHEX(t->value->int32); }
-  if ((t = dict_find(iter, MESSAGE_KEY_color_minor_hour_tick  ))) { settings.color_minor_hour_tick    = GColorFromHEX(t->value->int32); }
+  if ((t = dict_find(iter, MESSAGE_KEY_color_minor_tick       ))) { settings.color_minor_tick         = GColorFromHEX(t->value->int32); }
   if ((t = dict_find(iter, MESSAGE_KEY_color_hour             ))) { settings.color_hour               = GColorFromHEX(t->value->int32); }
   if ((t = dict_find(iter, MESSAGE_KEY_color_minute           ))) { settings.color_minute             = GColorFromHEX(t->value->int32); }
-  if ((t = dict_find(iter, MESSAGE_KEY_width_major_tick       ))) { settings.width_major_tick         = t->value->int32; }
-  if ((t = dict_find(iter, MESSAGE_KEY_width_minor_tick       ))) { settings.width_minor_tick         = t->value->int32; }
   save_settings();
   // Update the display based on new settings
   layer_mark_dirty(window_get_root_layer(s_window));
@@ -228,9 +225,7 @@ static void init(void) {
 }
 
 static void deinit(void) {
-  if (s_window) {
-    window_destroy(s_window);
-  }
+  if (s_window) window_destroy(s_window);
 }
 
 int main(void) {

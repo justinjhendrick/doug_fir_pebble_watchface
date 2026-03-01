@@ -32,15 +32,15 @@ static int max(int a, int b) {
 }
 
 static void fast_forward_time(struct tm* now) {
-  now->tm_hour = 4;
-  now->tm_min = 37;
+  now->tm_hour = 9;//now->tm_sec % 24;
+  now->tm_min = now->tm_sec;
 }
 
 static int deg_from_mins(int mins) {
   return mins * 360 / 60;
 }
 
-static void format_hour(char* buffer, int buffer_len, struct tm* now, bool force_12h) {
+static int get_hour(struct tm* now, bool force_12h) {
   int hour = now->tm_hour;
   if (force_12h || !clock_is_24h_style()) {
     hour = now->tm_hour % 12;
@@ -48,6 +48,11 @@ static void format_hour(char* buffer, int buffer_len, struct tm* now, bool force
       hour = 12;
     }
   }
+  return hour;
+}
+
+static void format_hour(char* buffer, int buffer_len, struct tm* now, bool force_12h) {
+  int hour = get_hour(now, force_12h);
   snprintf(buffer, buffer_len, "%d", hour);
 }
 
@@ -55,26 +60,8 @@ static void format_day_of_week(char* buffer, int buffer_len, struct tm* now) {
   strftime(buffer, buffer_len, "%a", now);
 }
 
-static void format_day_th(char* buffer, int buffer_len, struct tm* now) {
-  if (now->tm_mday / 10 == 1) {
-    strftime(buffer, buffer_len, "%eth", now);
-  } else if (now->tm_mday % 10 == 1) {
-    strftime(buffer, buffer_len, "%est", now);
-  } else if (now->tm_mday % 10 == 2) {
-    strftime(buffer, buffer_len, "%end", now);
-  } else if (now->tm_mday % 10 == 3) {
-    strftime(buffer, buffer_len, "%erd", now);
-  } else {
-    strftime(buffer, buffer_len, "%eth", now);
-  }
-}
-
-static void format_day(char* buffer, int buffer_len, struct tm* now) {
-  strftime(buffer, buffer_len, "%e", now);
-}
-
-static void format_short_month(char* buffer, int buffer_len, struct tm* now) {
-  strftime(buffer, buffer_len, "%b", now);
+static void format_day_and_month(char* buffer, int buffer_len, struct tm* now) {
+  strftime(buffer, buffer_len, "%e %b", now);
 }
 
 static void draw_text_valign(GContext* ctx, const char* buffer, GRect bbox, GTextAlignment align, bool bold, int valign) {
