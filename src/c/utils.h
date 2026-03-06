@@ -32,8 +32,8 @@ static int max(int a, int b) {
 }
 
 static void fast_forward_time(struct tm* now) {
-  now->tm_hour = 9;//now->tm_sec % 24;
-  now->tm_min = now->tm_sec;
+  now->tm_hour = 10;
+  now->tm_min = 43;
 }
 
 static int deg_from_mins(int mins) {
@@ -61,7 +61,7 @@ static void format_day_of_week(char* buffer, int buffer_len, struct tm* now) {
 }
 
 static void format_day_and_month(char* buffer, int buffer_len, struct tm* now) {
-  strftime(buffer, buffer_len, "%e %b", now);
+  strftime(buffer, buffer_len, "%b %e", now);
 }
 
 static void draw_text_valign(GContext* ctx, const char* buffer, GRect bbox, GTextAlignment align, bool bold, int valign) {

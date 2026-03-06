@@ -87,27 +87,34 @@ static void draw_ticks(GContext* ctx, GPoint center, int radius, int length) {
 }
 
 static void draw_numbers(GContext* ctx, GPoint center, int vcr, int text_size, struct tm* now) {
-  int text_center_radius = vcr - text_size / 2;
+  const int HOUR_MAX = 12;
+  const int MIN_MAX = 60;
+  int hour = get_hour(now, true);  // TODO? stop forcing 12h?
+  int min = now->tm_min / 5 * 5; // round down to nearest 5 mins
+  int hour_angle = hour * (TRIG_MAX_RATIO / HOUR_MAX);
+  int min_angle = min * (TRIG_MAX_RATIO / MIN_MAX);
+  int hour_text_center_radius = vcr - text_size / 2;
+  int min_text_center_radius = vcr - text_size / 2;
+  if ((hour % 12) * 5 == min) {
+    min_angle += 5 * (TRIG_MAX_RATIO / MIN_MAX) / 4;
+    hour_angle -= 5 * (TRIG_MAX_RATIO / MIN_MAX) / 4;
+  }
+
   // Hour
   graphics_context_set_text_color(ctx, settings.color_hour);
-  const int HOUR_MAX = 12;
-  int hour = get_hour(now, true);
-  int hour_angle = now->tm_hour * TRIG_MAX_RATIO / HOUR_MAX;
-  format_hour(s_buffer, BUFFER_LEN, now, true);
-  GPoint hour_text_center = cartesian_from_polar(center, text_center_radius, hour_angle);
+  snprintf(s_buffer, BUFFER_LEN, "%d", hour);
+  GPoint hour_text_center = cartesian_from_polar(center, hour_text_center_radius, hour_angle);
   GRect hour_bbox = rect_from_midpoint(hour_text_center, GSize(text_size, text_size));
   draw_text_midalign(ctx, s_buffer, hour_bbox, GTextAlignmentCenter, false);
 
-  // Minutes rounded down to nearest available major tick
+  // Minute
   graphics_context_set_text_color(ctx, settings.color_minute);
-  const int MIN_MAX = 60;
-  int min = now->tm_min / 5 * 5; // round down to nearest 5 mins
-  if ((hour % 12) * 5 == min) {
-    min -= 5; // avoid overlap
+  if (min < 10) {
+    snprintf(s_buffer, BUFFER_LEN, "0%d", min);
+  } else {
+    snprintf(s_buffer, BUFFER_LEN, "%d", min);
   }
-  int angle = min * TRIG_MAX_RATIO / MIN_MAX;
-  snprintf(s_buffer, BUFFER_LEN, "%d", min);
-  GPoint min_text_center = cartesian_from_polar(center, text_center_radius, angle);
+  GPoint min_text_center = cartesian_from_polar(center, min_text_center_radius, min_angle);
   GRect min_bbox = rect_from_midpoint(min_text_center, GSize(text_size, text_size));
   draw_text_midalign(ctx, s_buffer, min_bbox, GTextAlignmentCenter, false);
 }
@@ -135,8 +142,8 @@ static void draw_hour_hand(GContext* ctx, GPoint center, int radius, struct tm* 
 
 static void draw_date(GContext* ctx, GRect bounds, int height, struct tm* now) {
   GRect date_bbox;
-  date_bbox.origin = GPoint(2, bounds.size.h - height);
-  date_bbox.size = GSize(bounds.size.w - 4, height);
+  date_bbox.origin = GPoint(4, bounds.size.h - height - 3);
+  date_bbox.size = GSize(bounds.size.w - 8, height);
   format_day_of_week(s_buffer, BUFFER_LEN, now);
   graphics_context_set_text_color(ctx, gcolor_legible_over(settings.color_background));
   draw_text_midalign(ctx, s_buffer, date_bbox, GTextAlignmentLeft, false);
